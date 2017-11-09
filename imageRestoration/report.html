@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Huijuan Zhou" />
+
+
+<title>Accelerated Proximal Gradient for Image Restoration</title>
+
+<script src="report_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="report_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="report_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="report_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="report_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="report_files/navigation-1.1/tabsets.js"></script>
+<link href="report_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="report_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Accelerated Proximal Gradient for Image Restoration</h1>
+<h4 class="author"><em>Huijuan Zhou</em></h4>
+<h4 class="date"><em>Nov.7,2017</em></h4>
+
+</div>
+
+
+<div id="original-image-lan-somerhalder" class="section level3">
+<h3>Original image: Lan Somerhalder</h3>
+<center>
+<div class="figure">
+<img src="./origImg.png" />
+
+</div>
+</div>
+<div id="damaged-image" class="section level3">
+<h3>Damaged image</h3>
+<center>
+<div class="figure">
+<img src="./damagedImage.png" />
+
+</div>
+</div>
+<div id="reconstructed-image" class="section level3">
+<h3>Reconstructed image</h3>
+<center>
+<div class="figure">
+<img src="./reconsImg.png" />
+
+</div>
+<hr />
+</div>
+<div id="theory" class="section level2">
+<h2>Theory</h2>
+<ul>
+<li>For martrix <span class="math inline">\(A\in R^{m\times n}\)</span>, the condensed SVD is <span class="math inline">\(A=U_r\Sigma_rV_r\)</span>. For the constant <span class="math inline">\(\lambda&gt;0\)</span>, the optimal solution of the optimization problem<span class="math display">\[\mathrm{min}_{X\in R^{m\times n}}f(X)=\frac{1}{2}||X-A||^2_F+\lambda||X||_{S_1}\]</span> is<span class="math display">\[\hat X=\mathcal{D}_{\lambda}(A):=U_r(\Sigma_r-\lambda I_r)_{+}V^T_r,\]</span></li>
+</ul>
+<p>where<span class="math inline">\((\Sigma_r-\lambda I_r)_{+}=\mathrm{diag}((\sigma_1-\lambda)_{+},\cdots,(\sigma_r-\lambda)_{+})\)</span>.</p>
+<p><span class="math inline">\(\hat X\)</span> is the <strong>singular value thresholding operator</strong> of <span class="math inline">\(X\)</span>.</p>
+<hr />
+<ul>
+<li>The elements of <span class="math inline">\(M\in R^{m\times n}\)</span> is partially missing, and
+<center>
+<span class="math inline">\(M_{ij}\)</span> is obversed if and only is <span class="math inline">\((i,j)\in\Omega\)</span></li>
+</ul>
+<p>The <strong>optimization problem for image reconstruction</strong> is<span class="math display">\[\mathrm{min}_{X\in R^{m\times n}}f(X)=\frac{1}{2}||P_{\Omega}(X-M)||^2_F+\lambda ||X||_{S_1}\]</span></p>
+<p>Define <span class="math inline">\(P_{\Omega}(Y)=\overset{\sim}{Y}=(\overset{\sim} y_{ij})\in R^{m\times n}\)</span>, and<span class="math display">\[\overset{\sim} y_{ij}=\begin{cases} y_{ij}, &amp;(i,j)\in\Omega\\0, &amp;(i,j)\notin\Omega\end{cases}\]</span></p>
+<hr />
+<ul>
+<li>Let <span class="math inline">\(f(X)=g(X)+h(X)\)</span>, where <span class="math inline">\(g(X)=\frac{1}{2}||P_{\Omega}(X-M)||^2_F\)</span>.<span class="math display">\[\nabla g(X)=P_{\Omega}(X-M),\nabla^2 g(X)\preceq K\]</span></li>
+</ul>
+<p>where <span class="math inline">\(K\)</span> can equal <span class="math inline">\(1\)</span>. So <span class="math inline">\(g(X)\)</span> can be controlled by<span class="math display">\[\overset{\sim}g(X)=g(Y)+&lt;\nabla g(Y),X-Y&gt;+\frac{K}{2}||X-Y||^2_F\]</span> which equals<span class="math display">\[\overset{\sim} g(X)=C+\frac{K}{2}||X-\{Y-\frac{1}{K}P_{\Omega}(Y-M)\}||^2_F\]</span></p>
+<p>Replace <span class="math inline">\(g(X)\)</span> with <span class="math inline">\(\overset{\sim} g(X)\)</span>, we get the <strong>optimization problem</strong><span class="math display">\[\mathrm{min}_{X\in R^{m\times n}}\frac{1}{2}||X-\{Y-\frac{1}{K}P_{\Omega}(Y-M)\}||^2_F+\frac{\lambda}{K} ||X||_{S_1}\]</span> <strong>for each iteration</strong>.</p>
+<hr />
+</div>
+<div id="algorithm" class="section level2">
+<h2>Algorithm</h2>
+<ul>
+<li><p>Initialize <span class="math inline">\(Y_1=M\)</span>, <span class="math inline">\(X_1=M\)</span>, <span class="math inline">\(X_0\in R^{m\times n}\)</span>, and <span class="math inline">\(Y_0\in R^{m\times n}\)</span>, where <span class="math inline">\(M\in R^{m\times n}\)</span> is partially missing and known;</p></li>
+<li><p>Loop:</p></li>
+</ul>
+<p><span class="math inline">\(\quad\quad X_0=X_1\)</span> (store the last result)</p>
+<p><span class="math inline">\(\quad\quad X_1=\mathcal{D}_{\frac{\lambda}{K}}(Y_1)\)</span> (proximal operator)</p>
+<p><span class="math inline">\(\quad\quad Y_0=X_1+\beta(X_1-X_0)\)</span> (Accelerate)</p>
+<p><span class="math inline">\(\quad\quad Y_1=Y_0+\frac{1}{K}P_{\Omega}(M-Y_0)\)</span></p>
+<ul>
+<li>Until</li>
+</ul>
+<p><span class="math inline">\(\quad\quad ||X_1-X_0||_F&lt;\epsilon\)</span></p>
+<hr />
+</div>
+<div id="acceleration" class="section level2">
+<h2>Acceleration</h2>
+<p>parameter setting: <span class="math inline">\(\lambda=1\)</span>, <span class="math inline">\(K=1\)</span>, and</p>
+<ul>
+<li><span class="math inline">\(\beta=0\)</span></li>
+</ul>
+<div class="figure">
+<img src="./notacc.png" />
+
+</div>
+<ul>
+<li><span class="math inline">\(\beta=0.2\)</span></li>
+</ul>
+<div class="figure">
+<img src="./acc0.2.png" />
+
+</div>
+<ul>
+<li><span class="math inline">\(\beta=0.5\)</span></li>
+</ul>
+<div class="figure">
+<img src="./acc0.5.png" />
+
+</div>
+<ul>
+<li><span class="math inline">\(\beta=0.8\)</span></li>
+</ul>
+<div class="figure">
+<img src="./acc0.8.png" />
+
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "report_files/mathjax-local/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
